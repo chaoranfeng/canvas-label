@@ -1,0 +1,37 @@
+.Label_container{
+  padding:0 220px 0 100px;
+}
+.middle,.left,.right{
+  position:relative;
+  float: left;
+  min-height: 300px;
+  height: 100%;
+}
+.middle{
+ width:100%;
+}
+.left{
+  width:100px;
+  background-color: #5e5e5e;
+  margin-left:-100%;
+  left:-100px;
+  /* border-top:1px solid #262626;
+  border-right: 1px solid #262626;  */
+  border-right: 1px solid #868686d6;
+}
+.right{
+  width:219px;
+  margin-left:-220px;
+  right:-220px;
+  background-color: #5e5e5e;
+  border-left: 1px solid #868686d6;
+}
+body,#app,.root{
+  height: 100%;
+}
+body{
+  background-color: #262626;
+}
+.Label_container{
+  height: calc(100% - 51px);
+}
