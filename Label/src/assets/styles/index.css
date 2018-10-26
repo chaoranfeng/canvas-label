@@ -11,12 +11,12 @@
  width:100%;
 }
 .left{
+  position: relative;
   width:100px;
   background-color: #5e5e5e;
   margin-left:-100%;
   left:-100px;
-  /* border-top:1px solid #262626;
-  border-right: 1px solid #262626;  */
+
   border-right: 1px solid #868686d6;
 }
 .right{
@@ -34,4 +34,22 @@ body{
 }
 .Label_container{
   height: calc(100% - 51px);
+}
+.el-dialog__headerbtn{
+  display: none;
+}
+.tool_tip #sign_name{
+  width: 90% !important;
+  height: 37px;
+}
+.elinput{
+  width: 90% !important;
+  height: 37px;
+}
+.elinput .el-input__inner{
+  height: 37px !important;
+}
+.tool_tip .el-button{
+  height: 30px !important;
+  padding: 0px 20px !important;
 }

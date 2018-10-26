@@ -1,6 +1,6 @@
 <template>
   <div class="top">
-    <img :src='imgUrl' class="back_Icon">
+    <i class="logo iconfont icon-tubiaozhizuomoban-"></i>
     <ul class="inline_block tool_list">
       <li class="inline_block tool_item">文件(F)</li>
       <li class="inline_block tool_item">工具(T)</li>
@@ -32,16 +32,18 @@ export default {
   background-color: #535353;
   height: 50px;
   line-height: 50px;
-  border-bottom: 1px solid #868686d6
+  border-bottom: 1px solid #868686d6;
+  padding: 0px 20px;
 }
-.back_Icon {
-  height: 30px;
-  margin-top: -9px;
-  margin-right: 20px;
+.logo{
+  font-size: 30px;
+  color: white;
+  margin-right: 1%;
 }
 .tool_list {
   font-size: 16px;
   color: #d1d3d4;
+  vertical-align: top;
 }
 .tool_item {
   margin-right: 10px;
