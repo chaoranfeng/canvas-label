@@ -25,9 +25,12 @@ import { getImgScale } from '@/assets/js/ImageLoad.js'
 import { getDom ,mapCursor,setSelect, Draw, refreshCanvas} from 'common/js/Assistant.js'
 import { apiGetImage } from 'common/js/api.js'
 import { mapState , mapMutations} from 'vuex'
-import { Rect, Info} from 'common/js/normalize.js'
+import { Rect, Info, Polygon} from 'common/js/normalize.js'
 import { InitBoxPosition } from '@/assets/js/InitClientWh.js'
-import { judgeIsInRect} from "common/js/Rect.js";
+import { judgeIsInRect} from "common/js/Rect.js"
+import { radius, fillColor, borderColor, rectfillStyle, lineColor} from 'common/js/Global.js'
+import { fillCircle, drawLine, InFirstPolygon} from 'common/js/polygon.js'
+
 let clickX, clickY, endX, endY;
 //导航的宽高
 const offsetLeft=100;
@@ -49,6 +52,8 @@ export default {
       isDraw: false,
       //全局rect
       rect:{},
+      //全局临时多边形数组polygon
+      polygon:[],
       //标记信息总类
       signDictionary:{
         /*矩形*/
@@ -72,6 +77,9 @@ export default {
       //选中的图形
       select:{
         previousSelectedIndex:-1,
+      },
+      drag:{
+        direction:''
       },
       //点击图形 点击位置与图形的距离
       distance:{
@@ -133,44 +141,91 @@ export default {
       this.graphCanvas.style.cursor=cursor?cursor():'default';
     },
     mousedown(event){
-       console.log(this.distance)
+      clickX = event.pageX-offsetLeft;
+      clickY = event.pageY-offsetTop;
+      //矩形
       if(this.toolActive=='rect'){
-        clickX = event.pageX-offsetLeft;
-        clickY = event.pageY-offsetTop;
-        if(judgeIsInRect(this.signDictionary, clickX, clickY,this.select, this.distance)){
+        let judg=judgeIsInRect(this.signDictionary, clickX, clickY,this.select, this.distance);
+        /**拖动矩形*/
+        if(judg=='drag'){
           this.isDragging=true;
           refreshCanvas(this.graphCanvas, this.signDictionary);
-          console.log(this.select)
+          return
+        }
+        /**左上角移动改变大小*/
+        else if(judg=='dragtop'){
+          this.drag.direction='dragtop'
+          return
+        }
+        /**右下角移动改变大小*/
+        else if(judg=='dragbottom'){
+          this.drag.direction='dragbottom'
           return
         }
         //
         this.isDraw = true;
         this.toolTip=true;
       }
+      //多边形
+      else if(this.toolActive=='polygon'){
+        this.polygon.push(new Polygon(clickX, clickY));
+        this.polygon[0].color = 'red';
+        this.polygon[0].radius = 7;
+        for(let val of this.polygon){
+          fillCircle(this.graphContent, val.x, val.y, val.radius, val.color, borderColor);
+        }
+        drawLine(this.graphContent, this.polygon, lineColor);
+      }
     },
     mousemove(event){
+      let pagex = event.pageX-offsetLeft,
+          pagey = event.pageY-offsetTop;
+      
       if(this.isDraw) {
         if(this.toolActive=='rect'){
-          let endX = event.pageX-offsetLeft,
-              endY = event.pageY-offsetTop,
-              width=endX - clickX,
-              height=endY - clickY;
+          let width=pagex - clickX,
+              height=pagey - clickY;
           this.rect = new Rect(clickX,clickY,width,height);  
           Draw(this.toolActive, this.graphCanvas, this.signDictionary, clickX, clickY, width, height)
         }
       }
       else if(this.isDragging){
         if (this.toolActive=='rect') {
-          // 取得鼠标位置
-          let endX = event.pageX-offsetLeft,
-              endY = event.pageY-offsetTop;
           // 将圆圈移动到鼠标位置
-          this.signDictionary.rects[this.select.previousSelectedIndex].x= endX-this.distance.distanceX;
-          this.signDictionary.rects[this.select.previousSelectedIndex].y= endY-this.distance.distanceY;
+          this.signDictionary.rects[this.select.previousSelectedIndex].x= pagex-this.distance.distanceX;
+          this.signDictionary.rects[this.select.previousSelectedIndex].y= pagey-this.distance.distanceY;
 
         // 更新画布
          refreshCanvas(this.graphCanvas, this.signDictionary);
        }
+      }
+      else if(this.drag.direction){
+        const OFFSET = 20;
+        let rect = this.signDictionary.rects[this.select.previousSelectedIndex];
+        if(this.drag.direction=='dragtop'){
+          /**endx y 不变 */
+          let endX = rect.x + rect.width;
+          let endY = rect.y + rect.height;
+          if((endX-pagex)>=OFFSET){
+            rect.x = pagex;
+            rect.width = endX - pagex;
+          }
+          if((endY - pagey)>=OFFSET){
+            rect.y = pagey;
+            rect.height = endY - pagey;
+          }
+         refreshCanvas(this.graphCanvas, this.signDictionary);
+        }
+        else if(this.drag.direction=='dragbottom'){
+          //rect.x y不变
+          if(pagex-rect.x>=OFFSET){
+            rect.width = pagex-rect.x;
+          }
+          if(pagey-rect.y>=OFFSET){
+            rect.height = pagey-rect.y;
+          }
+          refreshCanvas(this.graphCanvas, this.signDictionary);
+        }
       }
     },
     mouseup(){
@@ -181,6 +236,8 @@ export default {
         this.isDraw= false;
       }
       this.isDragging = false;
+      this.drag.direction='';
+      this.select.previousSelectedIndex = -1;
     },
     addPoints(val){
       let index = ''
@@ -197,6 +254,7 @@ export default {
     cancel(){
       this.rects={};
       InitBoxPosition(this.graphCanvas.height, this.style);
+      refreshCanvas(this.graphCanvas, this.signDictionary)
     },
     ...mapMutations(['addSignInfo'])
   },

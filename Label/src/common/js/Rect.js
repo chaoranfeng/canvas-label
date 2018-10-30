@@ -1,8 +1,8 @@
 /* Draw Rect!
  * @Author: fengyang 
- * @Date: 2018-10-25 10:59:45 
+ * @Date: 2018-10-2radius 10:radius9:4radius 
  * @Last Modified by: fengyang
- * @Last Modified time: 2018-10-26 18:14:00
+ * @Last Modified time: 2018-10-29 17:36:51
  */
 /**
  * 箭头函数传参,如果在其他vue页面调用此脚本中的箭头函数 例如let a=(val)=>{..changevalue}
@@ -15,19 +15,17 @@
  * 但是尽管不是同一个obj，但是引用却指向同一块内存，所以传递引用类型进行修改会映射到原来的值
  */
 import { fillCircle } from './polygon.js'
-const borderColor = "#FF0000"
-const fillColor = "#F00"
-const radius = 5
+import { radius, fillColor, borderColor, rectfillStyle ,lineColor} from './Global.js'
 /** 
  * 绘制中 Recting
 */
 export let Recting = (context, x, y, width, height) => {
-  context.strokeStyle = borderColor;
+  context.strokeStyle = lineColor;
   context.strokeRect(x, y, width, height);
   context.fillStyle = fillColor;
   // 绘制圆圈,
-  fillCircle(context, x, y, 5, "#FF0000", "#F00");
-  fillCircle(context, x + width, y + height, 5, "#FF0000", "#F00")
+  fillCircle(context, x, y, radius, fillColor, borderColor);
+  fillCircle(context, x + width, y + height, radius, fillColor, borderColor)
 }
 
 /**
@@ -37,7 +35,7 @@ export let drawRect = (context, signDictionary) => {
   for (let value of signDictionary.rects) {
     /**填充已选择的矩形*/
     if (value.isSelected) {
-      context.fillStyle = "rgba(100,150,185,0.5)";/*设置填充颜色*/
+      context.fillStyle = rectfillStyle;/*设置填充颜色*/
       context.fillRect(value.x, value.y, value.width, value.height);
     }
     
@@ -53,16 +51,28 @@ export let judgeIsInRect=(signDictionary, clickX, clickY, select,distance)=>{
     let endW = signDictionary.rects[i].x+signDictionary.rects[i].width;
     let startH = signDictionary.rects[i].y;
     let endH = signDictionary.rects[i].y+signDictionary.rects[i].height;
-    //点击在矩形内，4个边界进行判断，5为可拖拽点预留的空间
-    if ((clickX>(startW+5)&&clickX<(endW-5))&&(clickY>(startH+5))&&(clickY<(endH-5))) {
+    //点击在矩形内，4个边界进行判断，radius为可拖拽点预留的空间
+    if ((clickX>(startW+radius)&&clickX<(endW-radius))&&(clickY>(startH+radius))&&(clickY<(endH-radius))) {
       select.previousSelectedIndex= i;
       //鼠标距离矩形
       distance.distanceX=clickX-signDictionary.rects[i].x;
       distance.distanceY=clickY-signDictionary.rects[i].y;
-      signDictionary.rects[i].isSelected=true
+      signDictionary.rects.forEach((item)=>{item.isSelected=false;})
+      signDictionary.rects[i].isSelected=true;
        //鼠标距离矩形
-      return true
+      return 'drag'
+    }
+    /**判断点击点与圆心距离是否小于半径*/
+    let clickDistanceLeft=Math.sqrt(Math.pow(startW - clickX, 2)+ Math.pow(startH - clickY, 2));
+    let clickDistanceBottom=Math.sqrt(Math.pow(endW - clickX, 2)+ Math.pow(endH - clickY, 2));
+    if(clickDistanceLeft<=radius) {
+      select.previousSelectedIndex= i;
+      return 'dragtop'
+    }
+    if(clickDistanceBottom<=radius) {
+      select.previousSelectedIndex= i;
+      return 'dragbottom'
     }
   }
-  return false
+  return null
 }

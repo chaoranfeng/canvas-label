@@ -12,7 +12,7 @@ import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 import store from './store'//Vuex
 Vue.config.productionTip = false
-// Vue.prototype.GLOBAL = Global//挂载到Vue实例上面
+
 Vue.use(ElementUI)
 /* eslint-disable no-new */
 new Vue({
