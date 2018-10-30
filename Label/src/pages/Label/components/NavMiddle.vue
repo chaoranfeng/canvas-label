@@ -22,14 +22,14 @@
 <script>
 import MessageBox from 'common/page/MessageBox'
 import { getImgScale } from '@/assets/js/ImageLoad.js'
-import { getDom ,mapCursor,setSelect, Draw, refreshCanvas} from 'common/js/Assistant.js'
+import { getDom ,mapCursor,setSelect, refreshCanvas} from 'common/js/Assistant.js'
 import { apiGetImage } from 'common/js/api.js'
 import { mapState , mapMutations} from 'vuex'
 import { Rect, Info, Polygon} from 'common/js/normalize.js'
 import { InitBoxPosition } from '@/assets/js/InitClientWh.js'
-import { judgeIsInRect} from "common/js/Rect.js"
+import { judgeIsInRect,Recting} from "common/js/Rect.js"
 import { radius, fillColor, borderColor, rectfillStyle, lineColor} from 'common/js/Global.js'
-import { fillCircle, drawLine, InFirstPolygon} from 'common/js/polygon.js'
+import { InFirstPolygon , changeFirstPolygon, Polygoning, closePath} from 'common/js/polygon.js'
 
 let clickX, clickY, endX, endY;
 //导航的宽高
@@ -59,33 +59,23 @@ export default {
         /*矩形*/
         rects:[],
         /*多边形 */
-        polygon:{},
+        polygon:[],
         /*曲线*/
         bezier:[]
       },
       title:'标记信息',
       //弹框样式
-      style:{
-        area:'',
-        left: '',
-        top: '',
-        display: 'none'
-      },
+      style:{area:'', left: '', top: '', display: 'none'},
       toolTip:false,
       // 使图形允许拖拽
       isDragging:false,
       //选中的图形
-      select:{
-        previousSelectedIndex:-1,
-      },
-      drag:{
-        direction:''
-      },
+      select:{previousSelectedIndex:-1},
+      drag:{direction:''},
+      polygonPathClose: true,
       //点击图形 点击位置与图形的距离
-      distance:{
-        distanceX:0,
-        distanceY:0,
-      }
+      distance:{distanceX:0,distanceY:0},
+      firstPolygon:{color:'red' ,radius: 7}
     };
   },
   created() {
@@ -168,13 +158,17 @@ export default {
       }
       //多边形
       else if(this.toolActive=='polygon'){
-        this.polygon.push(new Polygon(clickX, clickY));
-        this.polygon[0].color = 'red';
-        this.polygon[0].radius = 7;
-        for(let val of this.polygon){
-          fillCircle(this.graphContent, val.x, val.y, val.radius, val.color, borderColor);
+        if(this.polygon.length>=3){
+          if(InFirstPolygon(this.polygon, clickX, clickY)){
+            closePath(this.graphContent, this.polygon);
+            this.isDraw = true;
+            this.toolTip=true;
+            return
+          }
         }
-        drawLine(this.graphContent, this.polygon, lineColor);
+        this.polygon.push(new Polygon(clickX, clickY));
+        Polygoning(this.polygon,this.graphContent,borderColor,lineColor,'red',7)
+        this.polygonPathClose = false;
       }
     },
     mousemove(event){
@@ -185,8 +179,11 @@ export default {
         if(this.toolActive=='rect'){
           let width=pagex - clickX,
               height=pagey - clickY;
-          this.rect = new Rect(clickX,clickY,width,height);  
-          Draw(this.toolActive, this.graphCanvas, this.signDictionary, clickX, clickY, width, height)
+          this.rect = new Rect(clickX,clickY,width,height);
+          /**清除画布才能绘制连贯图形，因此先清除再绘制已经保存的数组*/
+          refreshCanvas(this.graphCanvas, this.signDictionary);
+          /**绘制当前操作的矩形*/
+          Recting(this.graphContent, clickX, clickY, width, height)     
         }
       }
       else if(this.isDragging){
@@ -227,6 +224,23 @@ export default {
           refreshCanvas(this.graphCanvas, this.signDictionary);
         }
       }
+      else if(!this.polygonPathClose){
+        let firstColor, firstRadius, callback;
+        if(InFirstPolygon(this.polygon, pagex, pagey)){
+          firstColor = 'blue';
+          firstRadius = 10;
+          callback = changeFirstPolygon;
+          this.firstPolygon.color ='blue';
+          this.firstPolygon.radius = 10
+        }
+        else{
+          firstColor = 'red';
+          firstRadius = 7;
+          callback = ()=>{};
+          this.firstPolygon.color = 'red';
+          this.firstPolygon.radius = 7
+        }
+      }
     },
     mouseup(){
       if(this.isDraw && this.toolTip){
@@ -234,6 +248,7 @@ export default {
         this.toolTip=false;
         InitBoxPosition(this.graphCanvas.height, this.style, clickX, clickY)
         this.isDraw= false;
+        this.polygonPathClose = true;
       }
       this.isDragging = false;
       this.drag.direction='';
@@ -247,9 +262,14 @@ export default {
         //rect-1,
         index = this.toolActive+"-"+String(this.signDictionary.rects.length-1);
       }
+      if(this.toolActive=='polygon'){
+        this.signDictionary.polygon.push([].concat(this.polygon));
+        this.polygon=[];
+        index=this.toolActive+"-"+String(this.signDictionary.polygon.length-1)
+      }
       InitBoxPosition(this.graphCanvas.height, this.style)
       //添加索引信息vuex
-      this.addSignInfo(new Info(val.name, index, val.class))
+      this.addSignInfo(new Info(val.name||this.toolActive, index, val.class))
     },
     cancel(){
       this.rects={};
@@ -278,6 +298,16 @@ export default {
     'selectInfo'(newValue){
       setSelect(this.signDictionary,newValue);
       refreshCanvas(this.graphCanvas, this.signDictionary)
+    },
+    /**watch内部检测，避免在move事件监测造成性能浪费*/
+    'firstPolygon':{
+      handler(val){
+        let callback;
+        if(val.radius==10)  callback = changeFirstPolygon;
+        refreshCanvas(this.graphCanvas, this.signDictionary);
+        Polygoning(this.polygon,this.graphContent,borderColor,lineColor,val.color,val.radius,callback)
+      },
+      deep: true
     }
   }
 };

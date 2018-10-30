@@ -8,4 +8,4 @@ export const radius = 5;
 export const rectfillStyle = "rgba(100,150,185,0.5)";
 
 /**连线颜色*/
-export const lineColor = 'black'
+export const lineColor = 'green'
