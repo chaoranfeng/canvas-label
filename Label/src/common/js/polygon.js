@@ -2,9 +2,10 @@
  * @Author: fengyang 
  * @Date: 2018-10-25 14:56:20 
  * @Last Modified by: fengyang
- * @Last Modified time: 2018-10-30 17:23:05
+ * @Last Modified time: 2018-10-31 17:40:17
  */
 import { radius, fillColor, borderColor, rectfillStyle ,lineColor} from './Global.js'
+import { drawRect} from './Rect'
 const globalAlpha = 0.85
 //画圆
 export let fillCircle = (context, startX, startY, radius, fillStyle, strokeStyle) => {
@@ -48,24 +49,47 @@ export let Polygoning=(polygon, context, borderColor, lineColor, firstColor, fir
 }
 
 //绘制polyon=[[(x,y),(x,y)],[..]]
-export let drawPolygon = (context, signDictionary)=>{
+export let drawPolygon = (context, signDictionary,drag=()=>{return false},clickX=0,clickY=0,select={},distance=[])=>{
   let fillStyle='';
-  for(let val of signDictionary.polygon){  
+  let points = signDictionary.polygon;
+  for (var i = 0; i < points.length; i++) {
     context.beginPath();
-    context.moveTo(val[0].x, val[0].y);
-    if (val[0].isSelected) context.fillStyle="rgba(237,208,112,0.5)";
+    context.moveTo(points[i][0].x, points[i].y);
+    if (points[i][0].isSelected) context.fillStyle="rgba(237,208,112,0.5)";
      else  context.fillStyle="rgba(237,208,112,0)";
-    for (let point of val){
+    for (let point of points[i]){
       context.lineTo(point.x, point.y);
     }
-    context.lineTo(val[0].x, val[0].y);
+    context.lineTo(points[i][0].x, points[i][0].y);
+    if(drag(context,clickX,clickY)){
+      select.previousSelectedIndex = i;
+      for(let j=0;j<points[i].length;j++){
+        distance.polygonDistance.push({x:clickX - points[i][j].x, y:clickY -points[i][j].y});
+      }
+    };
     context.fill();
     context.strokeStyle=borderColor;
     context.stroke();
-    for(let point of val){
+    for(let point of points[i]){
       fillCircle(context, point.x, point.y,point.radius, fillColor, borderColor)
     }
   }
+  // for(let val of signDictionary.polygon){  
+  //   context.beginPath();
+  //   context.moveTo(val[0].x, val[0].y);
+  //   if (val[0].isSelected) context.fillStyle="rgba(237,208,112,0.5)";
+  //    else  context.fillStyle="rgba(237,208,112,0)";
+  //   for (let point of val){
+  //     context.lineTo(point.x, point.y);
+  //   }
+  //   context.lineTo(val[0].x, val[0].y);
+  //   context.fill();
+  //   context.strokeStyle=borderColor;
+  //   context.stroke();
+  //   for(let point of val){
+  //     fillCircle(context, point.x, point.y,point.radius, fillColor, borderColor)
+  //   }
+  // }
 }
 //闭合曲线
 export let closePath=(context, polygon)=>{
@@ -75,4 +99,32 @@ export let closePath=(context, polygon)=>{
   context.lineTo(polygon[0].x,polygon[0].y);
   context.strokeStyle = borderColor;
   context.stroke();
+}
+//判断是否可以拖动点
+export let polygonDragPoint =(signDictionary, selectObj, clickX, clickY)=>{
+  let points =signDictionary.polygon;
+  for(let i =0; i<points.length; i++){
+    for(let j=0; j< points[i].length;j++){
+      let point = points[i][j];
+       //使用勾股定理计算这个点与圆心之间的距离
+       const distanceFromCenter = Math.sqrt(Math.pow(point.x - clickX, 2) + Math.pow(point.y - clickY, 2));
+       if(distanceFromCenter <=point.radius){
+         selectObj.previousSelectedIndex = i;
+         selectObj.preSelectPointIndex = j;
+         return true;
+       }
+    }
+  }
+  return false;
+}
+//判断点击polygon的索引，移动多边形
+export let isInPolygon=(canvas,signDictionary,selectObj,clickX,clickY,distance)=>{
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  drawRect(context, signDictionary);
+  drawPolygon(context, signDictionary,isPointOfPath, clickX, clickY, selectObj,distance);
+  return selectObj.previousSelectedIndex
+}
+let isPointOfPath=(context, clickX, clickY)=>{
+  return context.isPointInPath(clickX,clickY)
 }

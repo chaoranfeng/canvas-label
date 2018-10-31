@@ -28,7 +28,17 @@ export default {
   },
   mounted () {
     InitWH('canvas', 'middle');
-    InitWH('graph', 'middle')
+    InitWH('graph', 'middle');
+    this.notify();
+  },
+  methods:{
+     notify() {
+        this.$notify({
+          title: '提示',
+          message: '操作图形，需要先点击左侧的操作按钮，才可以操作对应的图形(矩形或多边形哦)',
+          duration: 6000
+        });
+      }
   },
   components: {
     NavTop,

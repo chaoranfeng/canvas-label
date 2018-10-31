@@ -53,3 +53,7 @@ body{
   height: 30px !important;
   padding: 0px 20px !important;
 }
+.el-notification {
+  min-height: 80px !important;
+  height: 100px;
+}

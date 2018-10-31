@@ -29,7 +29,7 @@ import { Rect, Info, Polygon} from 'common/js/normalize.js'
 import { InitBoxPosition } from '@/assets/js/InitClientWh.js'
 import { judgeIsInRect,Recting} from "common/js/Rect.js"
 import { radius, fillColor, borderColor, rectfillStyle, lineColor} from 'common/js/Global.js'
-import { InFirstPolygon , changeFirstPolygon, Polygoning, closePath} from 'common/js/polygon.js'
+import { InFirstPolygon , changeFirstPolygon, Polygoning, closePath, polygonDragPoint,isInPolygon} from 'common/js/polygon.js'
 
 let clickX, clickY, endX, endY;
 //导航的宽高
@@ -69,12 +69,13 @@ export default {
       toolTip:false,
       // 使图形允许拖拽
       isDragging:false,
-      //选中的图形
-      select:{previousSelectedIndex:-1},
+      polygonChangeSize:false,
+      //选中的图形与polygon点,因为polygon=[[(x,y)],[]...[(x,y),(x,y)]],因此确定polygon点需要两层索引
+      select:{previousSelectedIndex:-1, preSelectPointIndex:-1},
       drag:{direction:''},
       polygonPathClose: true,
       //点击图形 点击位置与图形的距离
-      distance:{distanceX:0,distanceY:0},
+      distance:{distanceX:0,distanceY:0,polygonDistance:[]},
       firstPolygon:{color:'red' ,radius: 7}
     };
   },
@@ -158,6 +159,14 @@ export default {
       }
       //多边形
       else if(this.toolActive=='polygon'){
+        
+        if(polygonDragPoint(this.signDictionary, this.select, clickX, clickY)){
+          this.polygonPathClose = true;
+          this.rect = [];
+          this.polygon = [];
+          this.polygonChangeSize =true;
+          return 
+        }
         if(this.polygon.length>=3){
           if(InFirstPolygon(this.polygon, clickX, clickY)){
             closePath(this.graphContent, this.polygon);
@@ -166,6 +175,15 @@ export default {
             return
           }
         }
+        if(isInPolygon(this.graphCanvas,this.signDictionary,this.select,clickX,clickY,this.distance)>=0){
+          for (let value of this.signDictionary.polygon) {
+              value[0].isSelected = false;
+          }
+          this.signDictionary.polygon[this.select.previousSelectedIndex][0].isSelected = true;
+          refreshCanvas(this.graphCanvas, this.signDictionary);
+          this.isDragging =true;
+          return
+        };
         this.polygon.push(new Polygon(clickX, clickY));
         Polygoning(this.polygon,this.graphContent,borderColor,lineColor,'red',7)
         this.polygonPathClose = false;
@@ -193,6 +211,15 @@ export default {
           this.signDictionary.rects[this.select.previousSelectedIndex].y= pagey-this.distance.distanceY;
 
         // 更新画布
+         refreshCanvas(this.graphCanvas, this.signDictionary);
+       }
+       if(this.toolActive=='polygon'){
+         for(let i=0; i< this.signDictionary.polygon[this.select.previousSelectedIndex].length;i++){
+           let point = this.signDictionary.polygon[this.select.previousSelectedIndex][i];
+           point.x = pagex-this.distance.polygonDistance[i].x;
+           point.y = pagey-this.distance.polygonDistance[i].y;
+         }
+         // 更新画布
          refreshCanvas(this.graphCanvas, this.signDictionary);
        }
       }
@@ -225,21 +252,22 @@ export default {
         }
       }
       else if(!this.polygonPathClose){
-        let firstColor, firstRadius, callback;
         if(InFirstPolygon(this.polygon, pagex, pagey)){
-          firstColor = 'blue';
-          firstRadius = 10;
-          callback = changeFirstPolygon;
           this.firstPolygon.color ='blue';
           this.firstPolygon.radius = 10
         }
         else{
-          firstColor = 'red';
-          firstRadius = 7;
-          callback = ()=>{};
           this.firstPolygon.color = 'red';
           this.firstPolygon.radius = 7
         }
+      }
+      /**改变polygon大小位置*/
+      else if(this.polygonChangeSize){
+        let {previousSelectedIndex , preSelectPointIndex} = this.select;
+        if(previousSelectedIndex<0) return;
+        this.signDictionary.polygon[previousSelectedIndex][preSelectPointIndex].x = pagex;
+        this.signDictionary.polygon[previousSelectedIndex][preSelectPointIndex].y = pagey;
+        refreshCanvas(this.graphCanvas, this.signDictionary)
       }
     },
     mouseup(){
@@ -253,6 +281,11 @@ export default {
       this.isDragging = false;
       this.drag.direction='';
       this.select.previousSelectedIndex = -1;
+      this.select.preSelectPointIndex = -1;
+      this.distance.distanceX = 0;
+      this.distance.distanceY = 0;
+      this.distance.polygonDistance=[];
+      this.polygonChangeSize = false;
     },
     addPoints(val){
       let index = ''
